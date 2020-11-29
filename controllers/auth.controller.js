@@ -6,15 +6,22 @@ const { validationResult } = require("express-validator");
 const showError = require("../config/showError");
 const generateToken = require("../config/generateToken");
 
+const authUser = (req, res) => {
+  const user = req.user;
+  return res.status(200).json({
+    user,
+  });
+};
+
 const signUp = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
-      error: errors.array(),
+      message: errors.array(),
     });
   }
 
-  const { name, username, password, email, description, devrole } = req.body;
+  const { name, username, password, email } = req.body;
 
   try {
     const user = await User.findOne({ $or: [{ username }, { email }] });
@@ -22,13 +29,12 @@ const signUp = async (req, res) => {
     //id user exists return error
     if (user) {
       return res.status(400).json({
-        error:
+        message:
           user.email.toLowerCase() === email.toLowerCase()
             ? "User with this email already exists"
             : "User with this username already exists",
       });
     }
-    console.log(req.body);
 
     //create new user
     const newUser = new User({
@@ -36,8 +42,6 @@ const signUp = async (req, res) => {
       username,
       password,
       email,
-      description,
-      devrole,
     });
 
     // encrypt the password
@@ -53,8 +57,6 @@ const signUp = async (req, res) => {
         name,
         username,
         email,
-        description,
-        devrole,
       },
       token,
     });
@@ -67,7 +69,7 @@ const signIn = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
-      error: errors.array(),
+      message: errors.array(),
     });
   }
 
@@ -78,17 +80,17 @@ const signIn = async (req, res) => {
     const user = await User.findOne({
       $or: [{ username: emailOrUsername }, { email: emailOrUsername }],
     });
-    
+
     if (!user) {
       return res.status(422).json({
-        error: "Invalid credentials",
+        message: "Invalid credentials",
       });
     }
     //match hash password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(422).json({
-        error: "Invalid credentials",
+        message: "Invalid credentials",
       });
     }
     //generate token
@@ -99,8 +101,6 @@ const signIn = async (req, res) => {
         name: user.name,
         username: user.username,
         email: user.email,
-        description: user.description,
-        devrole: user.devrole,
       },
       token,
     });
@@ -112,4 +112,5 @@ const signIn = async (req, res) => {
 module.exports = {
   signUp,
   signIn,
+  authUser,
 };
